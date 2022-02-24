@@ -9,5 +9,3 @@
 
 1.  [JavaGuide](https://javaguide.cn/home/)
 2.  [Road 2 Coding](https://www.r2coding.com/#/)
-3.  [剑指Offer(第二版)](https://leetcode-cn.com/problem-list/xb9nqhhg/)
-4.  [LeetCode 热题 HOT 100](https://leetcode-cn.com/problem-list/2cktkvj/)
