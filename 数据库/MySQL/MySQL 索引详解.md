@@ -173,5 +173,34 @@ B 树也称 B-树,全称为 **多路平衡查找树** ，B+ 树是 B 树的一�
 * 在使用 limit offset 查询缓慢时，可以借助索引来提高性能
 
 
+## MySQL 如何为表字段添加索引？
 
+1.添加 PRIMARY KEY（主键索引）
 
+```sql
+ALTER TABLE `table_name` ADD PRIMARY KEY ( `column` )
+```
+
+2.添加 UNIQUE(唯一索引)
+
+```sql
+ALTER TABLE `table_name` ADD UNIQUE ( `column` )
+```
+
+3.添加 INDEX(普通索引)
+
+```sql
+ALTER TABLE `table_name` ADD INDEX index_name ( `column` )
+```
+
+4.添加 FULLTEXT(全文索引)
+
+```sql
+ALTER TABLE `table_name` ADD FULLTEXT ( `column`)
+```
+
+5.添加多列索引
+
+```sql
+ALTER TABLE `table_name` ADD INDEX index_name ( `column1`, `column2`, `column3` )
+```
