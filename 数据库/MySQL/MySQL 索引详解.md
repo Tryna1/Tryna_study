@@ -172,6 +172,8 @@ B 树也称 B-树,全称为 **多路平衡查找树** ，B+ 树是 B 树的一�
 * 删除长期未使用的索引，不用的索引的存在会造成不必要的性能损耗 MySQL 5.7 可以通过查询 sys 库的 schema_unused_indexes 视图来查询哪些索引从未被使用
 * 在使用 limit offset 查询缓慢时，可以借助索引来提高性能
 
+> LIMIT和OFFSET组合使用时，LIMIT后面只能有一个参数，表示要提取的数量，offset后面的数字则表示第几行。
+如：select * from test LIMIT 3 offset 2; 这个SQL是指从第二行的下一行开始向下取3条数据。(即取：3，4，5行的三条数据)
 
 ## MySQL 如何为表字段添加索引？
 
