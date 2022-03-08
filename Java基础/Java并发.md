@@ -123,6 +123,112 @@ Java 线程在运行的生命周期中的指定时刻只可能处于下面 6 种
 上下文切换是现代操作系统的基本功能，因其每次需要保存信息恢复信息，这将会占用 CPU，内存等系统资源进行处理，也就意味着效率会有一定损耗，如果频繁切换就会造成整体效率低下。
 
 
+## 什么是线程死锁?如何避免死锁?
 
+
+### 认识线程死锁
+
+线程死锁描述的是这样一种情况：多个线程同时被阻塞，它们中的一个或者全部都在等待某个资源被释放。由于线程被无限期地阻塞，因此程序不可能正常终止。
+
+如下图所示，线程 A 持有资源 2，线程 B 持有资源 1，他们同时都想申请对方的资源，所以这两个线程就会互相等待而进入死锁状态。
+
+![](images/2022-03-08-20-59-19.png)
+
+下面通过一个例子来说明线程死锁,代码模拟了上图的死锁的情况 (代码来源于《并发编程之美》)：
+
+
+```java
+public class DeadLockDemo {
+    private static Object resource1 = new Object();//资源 1
+    private static Object resource2 = new Object();//资源 2
+
+    public static void main(String[] args) {
+        new Thread(() -> {
+            synchronized (resource1) {
+                System.out.println(Thread.currentThread() + "get resource1");
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println(Thread.currentThread() + "waiting get resource2");
+                synchronized (resource2) {
+                    System.out.println(Thread.currentThread() + "get resource2");
+                }
+            }
+        }, "线程 1").start();
+
+        new Thread(() -> {
+            synchronized (resource2) {
+                System.out.println(Thread.currentThread() + "get resource2");
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println(Thread.currentThread() + "waiting get resource1");
+                synchronized (resource1) {
+                    System.out.println(Thread.currentThread() + "get resource1");
+                }
+            }
+        }, "线程 2").start();
+    }
+}
+```
+
+Output
+
+```java
+Thread[线程 1,5,main]get resource1
+Thread[线程 2,5,main]get resource2
+Thread[线程 1,5,main]waiting get resource2
+Thread[线程 2,5,main]waiting get resource1
+```
+
+线程 A 通过 `synchronized (resource1)` 获得 `resource1` 的监视器锁，然后通过`Thread.sleep(1000)`;让线程 A 休眠 1s 为的是让线程 B 得到执行然后获取到 resource2 的监视器锁。线程 A 和线程 B 休眠结束了都开始企图请求获取对方的资源，然后这两个线程就会陷入互相等待的状态，这也就产生了死锁。上面的例子符合产生死锁的四个必要条件。
+
+### 如何预防和避免线程死锁?
+
+**如何预防死锁？** 破坏死锁的产生的必要条件即可：
+
+* **破坏占有并等待** ：一次性申请所有的资源。
+* **破坏非抢占 ：** 占用部分资源的线程进一步申请其他资源时，如果申请不到，可以主动释放它占有的资源。
+* **破坏循环等待条件 ：** 靠按序申请资源来预防。按某一顺序申请资源，释放资源则反序释放。破坏循环等待条件。
+
+**如何避免死锁？**
+
+避免死锁就是在资源分配时，借助于算法（比如银行家算法）对资源分配进行计算评估，使其进入安全状态。
+
+>**安全状态** 指的是系统能够按照某种线程推进顺序（P1、P2、P3.....Pn）来为每个线程分配所需资源，直到满足每个线程对资源的最大需求，使每个线程都可顺利完成。称<P1、P2、P3.....Pn>序列为安全序列。
+
+我们对线程 2 的代码修改成下面这样就不会产生死锁了。
+
+```java
+        new Thread(() -> {
+            synchronized (resource1) {
+                System.out.println(Thread.currentThread() + "get resource1");
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println(Thread.currentThread() + "waiting get resource2");
+                synchronized (resource2) {
+                    System.out.println(Thread.currentThread() + "get resource2");
+                }
+            }
+        }, "线程 2").start();
+```
+
+```java
+Thread[线程 1,5,main]get resource1
+Thread[线程 1,5,main]waiting get resource2
+Thread[线程 1,5,main]get resource2
+Thread[线程 2,5,main]get resource1
+Thread[线程 2,5,main]waiting get resource2
+Thread[线程 2,5,main]get resource2
+```
+
+线程 1 首先获得到 resource1 的监视器锁,这时候线程 2 就获取不到了。然后线程 1 再去获取 resource2 的监视器锁，可以获取到。然后线程 1 释放了对 resource1、resource2 的监视器锁的占用，线程 2 获取到就可以执行了。这样就破坏了破坏循环等待条件，因此避免了死锁。
 
 
