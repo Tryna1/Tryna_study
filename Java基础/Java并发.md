@@ -246,3 +246,68 @@ new 一个 Thread，线程进入了新建状态。调用 start()方法，会启�
 **总结： 调用 `start()` 方法方可启动线程并使线程进入就绪状态，直接执行 `run()` 方法的话不会以多线程的方式执行。**
 
 
+## synchronized 关键字
+
+### 说一说自己对于 synchronized 关键字的了解
+
+`synchronized` **关键字解决的是多个线程之间访问资源的同步性,**`synchronized`**关键字可以保证被它修饰的方法或者代码块在任意时刻只能有一个线程执行。**
+
+另外，在 Java 早期版本中，`synchronized` 属于 **重量级锁**，效率低下。
+
+**为什么呢？**
+
+因为监视器锁（monitor）是依赖于底层的操作系统的 `Mutex Lock` 来实现的，Java 的线程是映射到操作系统的原生线程之上的。如果要挂起或者唤醒一个线程，都需要操作系统帮忙完成，而操作系统实现线程之间的切换时需要从用户态转换到内核态，这个状态之间的转换需要相对比较长的时间，时间成本相对较高
+
+庆幸的是在 Java 6 之后 Java 官方对从 JVM 层面对 `synchronized` 较大优化，所以现在的 `synchronized` 锁效率也优化得很不错了。JDK1.6 对锁的实现引入了大量的优化，如自旋锁、适应性自旋锁、锁消除、锁粗化、偏向锁、轻量级锁等技术来减少锁操作的开销。
+
+所以，你会发现目前的话，不论是各种开源框架还是 JDK 源码都大量使用了 `synchronized` 关键字。
+
+### 说说自己是怎么使用 synchronized 关键字
+
+**synchronized 关键字最主要的三种使用方式：**
+
+**1.修饰实例方法:** 作用于当前对象实例加锁，进入同步代码前要获得 **当前对象实例的锁**
+```java
+synchronized void method() {
+    //业务代码
+}
+```
+
+**2.修饰静态方法:** 也就是给当前类加锁，会作用于类的所有对象实例 ，进入同步代码前要获得 **当前 class 的锁**。因为静态成员不属于任何一个实例对象，是类成员（ static 表明这是该类的一个静态资源，不管 new 了多少个对象，只有一份）。所以，如果一个线程 A 调用一个实例对象的非静态 `synchronized` 方法，而线程 B 需要调用这个实例对象所属类的静态 `synchronized` 方法，是允许的，不会发生互斥现象，**因为访问静态 `synchronized` 方法占用的锁是当前类的锁，而访问非静态 `synchronized` 方法占用的锁是当前实例对象锁**
+
+```java
+synchronized static void method() {
+    //业务代码
+}
+```
+
+**3.修饰代码块 ：** 指定加锁对象，对给定对象/类加锁。synchronized(this|object) 表示进入同步代码库前要获得**给定对象的锁**。synchronized(类.class) 表示进入同步代码前要获得 **当前 class 的锁**
+
+**总结：**
+* `synchronized` 关键字加到 `static` 静态方法和 `synchronized(class)` 代码块上都是是给 `Class` 类上锁
+* `synchronized` 关键字加到实例方法上是给对象实例上锁。
+* 尽量不要使用 `synchronized(String a)` 因为 `JVM` 中，字符串常量池具有缓存功能！
+
+### 构造方法可以使用 synchronized 关键字修饰么
+
+**构造方法不能使用 synchronized 关键字修饰。**
+构造方法本身就属于线程安全的，不存在同步的构造方法一说。
+
+### 谈谈 synchronized 和 ReentrantLock 的区别
+
+#### 两者都是可重入锁
+
+**“可重入锁”** 指的是自己可以再次获取自己的内部锁。比如一个线程获得了某个对象的锁，此时这个对象锁还没有释放，当其再次想要获取这个对象的锁的时候还是可以获取的，如果是不可重入锁的话，就会造成死锁。同一个线程每次获取锁，锁的计数器都自增 1，所以要等到锁的计数器下降为 0 时才能释放锁
+
+#### synchronized 依赖于 JVM 而 ReentrantLock 依赖于 API
+
+`synchronized` 是依赖于 JVM 实现的，前面我们也讲到了 虚拟机团队在 JDK1.6 为 `synchronized` 关键字进行了很多优化，但是这些优化都是在虚拟机层面实现的，并没有直接暴露给我们。`ReentrantLock` 是 JDK 层面实现的（也就是 API 层面，需要 lock() 和 unlock() 方法配合 try/finally 语句块来完成），所以我们可以通过查看它的源代码，来看它是如何实现的
+
+### ReentrantLock 比 synchronized 增加了一些高级功能
+
+* **等待可中断 :** `ReentrantLock`提供了一种能够中断等待锁的线程的机制，通过 `lock.lockInterruptibly()` 来实现这个机制。也就是说正在等待的线程可以选择放弃等待，改为处理其他事情
+* **可实现公平锁 :** `ReentrantLock`可以指定是公平锁还是非公平锁。而`synchronized`只能是非公平锁。所谓的公平锁就是先等待的线程先获得锁。`ReentrantLock`默认情况是非公平的，可以通过 `ReentrantLock`类的`ReentrantLock(boolean fair)`构造方法来制定是否是公平的
+* **可实现选择性通知（锁可以绑定多个条件）:** `synchronized`关键字与`wait()`和`notify()/notifyAll()`方法相结合可以实现等待/通知机制。`ReentrantLock`类当然也可以实现，但是需要借助于`Condition`接口与`newCondition()`方法
+
+> `notify()/notifyAll()`方法进行通知时，被通知的线程是由 JVM 选择的，用`ReentrantLock`类结合`Condition`实例可以实现“选择性通知”。如果执行`notifyAll()`方法的话就会通知所有处于等待状态的线程这样会造成很大的效率问题，而`Condition`实例的`signalAll()`方法 只会唤醒注册在该`Condition`实例中的所有等待线程
+
